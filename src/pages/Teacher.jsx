@@ -13,6 +13,8 @@ const Teacher = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [profileFile, setProfileFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
   const [form, setForm] = useState({
     login_id: '',
     password: '',
@@ -23,6 +25,8 @@ const Teacher = () => {
     qualification: '',
     joining_date: '',
     subject: '',
+    gender: '',
+    date_of_birth: '',
   });
 
   const { can } = usePermission();
@@ -46,8 +50,15 @@ const Teacher = () => {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const openCreateModal = () => {
-    setEditingId(null);
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfileFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const resetForm = () => {
     setForm({
       login_id: '',
       password: '',
@@ -58,7 +69,16 @@ const Teacher = () => {
       qualification: '',
       joining_date: '',
       subject: '',
+      gender: '',
+      date_of_birth: '',
     });
+    setProfileFile(null);
+    setPreviewUrl('');
+  };
+
+  const openCreateModal = () => {
+    setEditingId(null);
+    resetForm();
     setModalOpen(true);
   };
 
@@ -78,7 +98,16 @@ const Teacher = () => {
         qualification: data.qualification || '',
         joining_date: data.joining_date || '',
         subject: data.subject || '',
+        gender: data.gender || '',
+        date_of_birth: data.date_of_birth || '',
       });
+      // Set preview if profile picture exists
+      if (data.profile_picture) {
+        setPreviewUrl(`http://localhost:5000/${data.profile_picture}`);
+      } else {
+        setPreviewUrl('');
+      }
+      setProfileFile(null);
       setModalOpen(true);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to load teacher data');
@@ -90,16 +119,20 @@ const Teacher = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const formData = new FormData();
+      Object.keys(form).forEach(key => {
+        if (form[key]) formData.append(key, form[key]);
+      });
+      if (profileFile) formData.append('profile_picture', profileFile);
+
       if (editingId) {
-        const payload = { ...form };
-        if (!payload.password) delete payload.password;
-        await updateTeacher(editingId, payload);
+        await updateTeacher(editingId, formData);
       } else {
         if (!form.password) {
           alert('Password is required for new teacher');
           return;
         }
-        await createTeacher(form);
+        await createTeacher(formData);
       }
       setModalOpen(false);
       fetchData();
@@ -169,60 +202,74 @@ const Teacher = () => {
 
       {/* Table */}
       <div className="bg-white rounded shadow-sm overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Login ID</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qualification</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mobile</th>
-              {(canUpdate || canDelete) && (
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-              )}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {teachers.map((t) => (
-              <tr key={t.id} className="hover:bg-gray-50 transition">
-                <td className="px-4 py-3 text-sm">{t.id}</td>
-                <td className="px-4 py-3 text-sm font-medium">{t.full_name}</td>
-                <td className="px-4 py-3 text-sm">{t.login_id}</td>
-                <td className="px-4 py-3 text-sm">{t.department || '—'}</td>
-                <td className="px-4 py-3 text-sm">{t.qualification || '—'}</td>
-                <td className="px-4 py-3 text-sm">{t.subject || '—'}</td>
-                <td className="px-4 py-3 text-sm">{t.email || '—'}</td>
-                <td className="px-4 py-3 text-sm">{t.mobile || '—'}</td>
-                {(canUpdate || canDelete) && (
-                  <td className="px-4 py-3 text-right space-x-2">
-                    {canUpdate && (
-                      <button
-                        onClick={() => openEditModal(t)}
-                        className="text-blue-600 hover:text-blue-800 p-1"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                    )}
-                    {canDelete && (
-                      <button
-                        onClick={() => openConfirmModal(t.id)}
-                        className="text-red-500 hover:text-red-700 p-1"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-                  </td>
-                )}
-              </tr>
-            ))}
-            {teachers.length === 0 && (
-              <tr><td colSpan="10" className="text-center py-8 text-gray-500">No teachers found.</td></tr>
-            )}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+           <thead className="bg-gray-50 border-b">
+  <tr>
+    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">S.No.</th>
+    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Photo</th>
+    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Login ID</th>
+    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
+    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
+    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mobile</th>
+    {(canUpdate || canDelete) && (
+      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+    )}
+  </tr>
+</thead>
+         <tbody className="divide-y divide-gray-100">
+  {teachers.map((t, index) => (
+    <tr key={t.id} className="hover:bg-gray-50 transition">
+      <td className="px-4 py-3 text-sm">{index + 1}</td>
+      <td className="px-4 py-3">
+        {t.profile_picture ? (
+          <img
+            src={`${import.meta.env?.VITE_URL}${t.profile_picture}`}
+            alt={t.full_name}
+            className="w-10 h-10 rounded-full object-cover border"
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs">
+            No
+          </div>
+        )}
+      </td>
+      <td className="px-4 py-3 text-sm font-medium">{t.full_name}</td>
+      <td className="px-4 py-3 text-sm">{t.login_id}</td>
+      <td className="px-4 py-3 text-sm">{t.department || '—'}</td>
+      <td className="px-4 py-3 text-sm">{t.subject || '—'}</td>
+      <td className="px-4 py-3 text-sm">{t.email || '—'}</td>
+      <td className="px-4 py-3 text-sm">{t.mobile || '—'}</td>
+      {(canUpdate || canDelete) && (
+        <td className="px-4 py-3 text-right space-x-2">
+          {canUpdate && (
+            <button
+              onClick={() => openEditModal(t)}
+              className="text-blue-600 hover:text-blue-800 p-1"
+            >
+              <Pencil size={16} />
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => openConfirmModal(t.id)}
+              className="text-red-500 hover:text-red-700 p-1"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </td>
+      )}
+    </tr>
+  ))}
+  {teachers.length === 0 && (
+    <tr><td colSpan="10" className="text-center py-8 text-gray-500">No teachers found.</td></tr>
+  )}
+</tbody>
+          </table>
+        </div>
       </div>
 
       {/* Reusable Modal for Create/Edit */}
@@ -328,6 +375,45 @@ const Teacher = () => {
                 onChange={handleChange}
                 className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+              <select
+                name="gender"
+                value={form.gender || ''}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="">Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+              <input
+                type="date"
+                name="date_of_birth"
+                value={form.date_of_birth || ''}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            {/* Profile Photo – spans full width */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="w-full border p-2 rounded focus:outline-none"
+              />
+              {previewUrl && (
+                <div className="mt-2">
+                  <img src={previewUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover border" />
+                </div>
+              )}
             </div>
           </div>
           <div className="flex justify-end space-x-3 mt-6">

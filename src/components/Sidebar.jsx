@@ -67,12 +67,12 @@ const Sidebar = () => {
     <aside className="w-64 bg-[#2d2d31] text-white h-screen p-4 flex flex-col">
       {/* Logo with icon + gradient text */}
       <div className="flex items-center justify-center gap-2 mb-4 border-b border-gray-700 pb-4">
-        <FaSchool className="text-[#d94d59]" size={24} />
+        {/* <FaSchool className="text-[#d94d59]" size={24} />
         <h1 className="text-xl font-bold">
           <span className="bg-gradient-to-r from-[#d94d59] to-[#e47b4a] bg-clip-text text-transparent">
             School ERP
           </span>
-        </h1>
+        </h1> */}
       </div>
 
       <nav className="flex-1 overflow-y-auto">

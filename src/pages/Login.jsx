@@ -25,10 +25,10 @@ const Login = () => {
         <div className="bg-white rounded-2xl shadow-2xl p-8 border border-gray-100">
           {/* Logo / Brand */}
           <div className="flex flex-col items-center mb-6">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#d94d59] to-[#e47b4a] flex items-center justify-center mb-3 shadow-md">
+            {/* <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#d94d59] to-[#e47b4a] flex items-center justify-center mb-3 shadow-md">
               <GraduationCap size={32} className="text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-800">School ERP</h1>
+            </div> */}
+            {/* <h1 className="text-2xl font-bold text-gray-800">School ERP</h1> */}
             <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
           </div>
 
