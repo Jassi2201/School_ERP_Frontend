@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getStudents, getStudentById, createStudent, updateStudent, deleteStudent } from '../services/studentService';
-import { usePermission } from '../hooks/usePermission';
+import { getClasses, getSectionsByClass } from '../services/classSectionService';
+import { useModulePermissions } from '../hooks/useModulePermissions';
 import { Search, ChevronDown, Pencil, Trash2, Plus } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
@@ -13,29 +14,48 @@ const Student = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [profileFile, setProfileFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+
+  // For class/section dropdowns
+  const [classes, setClasses] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState('');
+
   const [form, setForm] = useState({
     login_id: '',
     password: '',
     full_name: '',
     email: '',
     mobile: '',
-    class: '',
-    section: '',
+    class_id: '',
+    section_id: '',
     father_name: '',
     mother_name: '',
     dob: '',
+    gender: '',
+    roll_number: '',
+    admission_date: '',
+    address: '',
+    father_phone: '',
+    mother_phone: '',
+    blood_group: '',
+    father_occupation: '',
+    mother_occupation: '',
+    sibling_details: '',
   });
 
-  const { can } = usePermission();
-  const canCreate = can('STUDENT', 'CREATE');
-  const canUpdate = can('STUDENT', 'UPDATE');
-  const canDelete = can('STUDENT', 'DELETE');
+  const { canCreate, canUpdate, canDelete } = useModulePermissions();
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await getStudents();
-      setStudents(res.data.data);
+      const [studentsRes, classesRes] = await Promise.all([
+        getStudents(),
+        getClasses(),
+      ]);
+      setStudents(studentsRes.data.data);
+      setClasses(classesRes.data.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load');
     } finally {
@@ -45,22 +65,74 @@ const Student = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  // Fetch sections when class selection changes (in the modal)
+  useEffect(() => {
+    if (selectedClassId) {
+      const fetchSections = async () => {
+        try {
+          const res = await getSectionsByClass(selectedClassId);
+          setSections(res.data.data);
+        } catch (err) {
+          setSections([]);
+        }
+      };
+      fetchSections();
+    } else {
+      setSections([]);
+    }
+  }, [selectedClassId]);
 
-  const openCreateModal = () => {
-    setEditingId(null);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+
+    // If class changes, update selectedClassId and reset section
+    if (name === 'class_id') {
+      setSelectedClassId(value);
+      setForm(prev => ({ ...prev, section_id: '' }));
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfileFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const resetForm = () => {
     setForm({
       login_id: '',
       password: '',
       full_name: '',
       email: '',
       mobile: '',
-      class: '',
-      section: '',
+      class_id: '',
+      section_id: '',
       father_name: '',
       mother_name: '',
       dob: '',
+      gender: '',
+      roll_number: '',
+      admission_date: '',
+      address: '',
+      father_phone: '',
+      mother_phone: '',
+      blood_group: '',
+      father_occupation: '',
+      mother_occupation: '',
+      sibling_details: '',
     });
+    setSelectedClassId('');
+    setSections([]);
+    setProfileFile(null);
+    setPreviewUrl('');
+  };
+
+  const openCreateModal = () => {
+    setEditingId(null);
+    resetForm();
     setModalOpen(true);
   };
 
@@ -76,12 +148,40 @@ const Student = () => {
         full_name: data.full_name || '',
         email: data.email || '',
         mobile: data.mobile || '',
-        class: data.class || '',
-        section: data.section || '',
+        class_id: data.class_id || '',
+        section_id: data.section_id || '',
         father_name: data.father_name || '',
         mother_name: data.mother_name || '',
         dob: data.dob || '',
+        gender: data.gender || '',
+        roll_number: data.roll_number || '',
+        admission_date: data.admission_date || '',
+        address: data.address || '',
+        father_phone: data.father_phone || '',
+        mother_phone: data.mother_phone || '',
+        blood_group: data.blood_group || '',
+        father_occupation: data.father_occupation || '',
+        mother_occupation: data.mother_occupation || '',
+        sibling_details: data.sibling_details || '',
       });
+
+      // Set selected class id for sections dropdown
+      if (data.class_id) {
+        setSelectedClassId(data.class_id);
+        const secRes = await getSectionsByClass(data.class_id);
+        setSections(secRes.data.data);
+      } else {
+        setSelectedClassId('');
+        setSections([]);
+      }
+
+      if (data.profile_picture) {
+        const baseURL = import.meta.env.VITE_BASE_URL || 'http://localhost:5000';
+        setPreviewUrl(`${baseURL}${data.profile_picture}`);
+      } else {
+        setPreviewUrl('');
+      }
+      setProfileFile(null);
       setModalOpen(true);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to load student data');
@@ -93,16 +193,20 @@ const Student = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const formData = new FormData();
+      Object.keys(form).forEach(key => {
+        if (form[key] !== undefined && form[key] !== '') formData.append(key, form[key]);
+      });
+      if (profileFile) formData.append('profile_picture', profileFile);
+
       if (editingId) {
-        const payload = { ...form };
-        if (!payload.password) delete payload.password;
-        await updateStudent(editingId, payload);
+        await updateStudent(editingId, formData);
       } else {
         if (!form.password) {
           alert('Password is required for new student');
           return;
         }
-        await createStudent(form);
+        await createStudent(formData);
       }
       setModalOpen(false);
       fetchData();
@@ -160,9 +264,7 @@ const Student = () => {
             </div>
           </div>
           <div className="flex items-center gap-4 flex-wrap">
-            <button className="text-sm text-gray-600 flex items-center gap-2">
-              1 filter applied <ChevronDown size={14} />
-            </button>
+            <button className="text-sm text-gray-600 flex items-center gap-2">1 filter applied <ChevronDown size={14} /></button>
             <button className="text-sm text-red-500">Clear Filter</button>
             {canCreate && (
               <button
@@ -182,13 +284,14 @@ const Student = () => {
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">S.No.</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Photo</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Login ID</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Section</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Roll</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Father</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mobile</th>
                 {(canUpdate || canDelete) && (
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -196,31 +299,36 @@ const Student = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {students.map((student) => (
+              {students.map((student, index) => (
                 <tr key={student.id} className="hover:bg-gray-50 transition">
-                  <td className="px-4 py-3 text-sm">{student.id}</td>
+                  <td className="px-4 py-3 text-sm">{index + 1}</td>
+                  <td className="px-4 py-3">
+                    {student.profile_picture ? (
+                      <img
+                        src={`${import.meta.env.VITE_BASE_URL || 'http://localhost:5000'}${student.profile_picture}`}
+                        alt={student.full_name}
+                        className="w-10 h-10 rounded-full object-cover border"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs">No</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm font-medium">{student.full_name}</td>
                   <td className="px-4 py-3 text-sm">{student.login_id}</td>
                   <td className="px-4 py-3 text-sm">{student.class || '—'}</td>
                   <td className="px-4 py-3 text-sm">{student.section || '—'}</td>
+                  <td className="px-4 py-3 text-sm">{student.roll_number || '—'}</td>
                   <td className="px-4 py-3 text-sm">{student.father_name || '—'}</td>
-                  <td className="px-4 py-3 text-sm">{student.email || '—'}</td>
                   <td className="px-4 py-3 text-sm">{student.mobile || '—'}</td>
                   {(canUpdate || canDelete) && (
                     <td className="px-4 py-3 text-right space-x-2">
                       {canUpdate && (
-                        <button
-                          onClick={() => openEditModal(student)}
-                          className="text-blue-600 hover:text-blue-800 transition p-1"
-                        >
+                        <button onClick={() => openEditModal(student)} className="text-blue-600 hover:text-blue-800 p-1">
                           <Pencil size={16} />
                         </button>
                       )}
                       {canDelete && (
-                        <button
-                          onClick={() => openConfirmModal(student.id)}
-                          className="text-red-500 hover:text-red-700 transition p-1"
-                        >
+                        <button onClick={() => openConfirmModal(student.id)} className="text-red-500 hover:text-red-700 p-1">
                           <Trash2 size={16} />
                         </button>
                       )}
@@ -229,18 +337,14 @@ const Student = () => {
                 </tr>
               ))}
               {students.length === 0 && (
-                <tr>
-                  <td colSpan="10" className="text-center py-8 text-gray-500 text-sm">
-                    No students found.
-                  </td>
-                </tr>
+                <tr><td colSpan="10" className="text-center py-8 text-gray-500 text-sm">No students found.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Reusable Modal for Create/Edit */}
+      {/* Modal */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -249,6 +353,7 @@ const Student = () => {
       >
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Login & Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Login ID *</label>
               <input
@@ -273,6 +378,8 @@ const Student = () => {
                 required={!editingId}
               />
             </div>
+
+            {/* Personal */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
               <input
@@ -305,31 +412,122 @@ const Student = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+              <select
+                name="gender"
+                value={form.gender || ''}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="">Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group</label>
               <input
                 type="text"
-                name="class"
-                value={form.class}
+                name="blood_group"
+                value={form.blood_group}
                 onChange={handleChange}
                 className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
               <input
-                type="text"
-                name="section"
-                value={form.section}
+                type="date"
+                name="dob"
+                value={form.dob}
                 onChange={handleChange}
                 className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
+
+            {/* Academic – Class & Section dropdowns */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+              <select
+                name="class_id"
+                value={form.class_id}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="">Select Class</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.display_name || cls.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
+              <select
+                name="section_id"
+                value={form.section_id}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                disabled={!selectedClassId}
+              >
+                <option value="">Select Section</option>
+                {sections.map((sec) => (
+                  <option key={sec.id} value={sec.id}>
+                    {sec.display_name || sec.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Roll Number</label>
+              <input
+                type="text"
+                name="roll_number"
+                value={form.roll_number}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Admission Date</label>
+              <input
+                type="date"
+                name="admission_date"
+                value={form.admission_date}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+
+            {/* Parents */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Father's Name</label>
               <input
                 type="text"
                 name="father_name"
                 value={form.father_name}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Father's Phone</label>
+              <input
+                type="text"
+                name="father_phone"
+                value={form.father_phone}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Father's Occupation</label>
+              <input
+                type="text"
+                name="father_occupation"
+                value={form.father_occupation}
                 onChange={handleChange}
                 className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
@@ -345,16 +543,66 @@ const Student = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mother's Phone</label>
               <input
-                type="date"
-                name="dob"
-                value={form.dob}
+                type="text"
+                name="mother_phone"
+                value={form.mother_phone}
                 onChange={handleChange}
                 className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mother's Occupation</label>
+              <input
+                type="text"
+                name="mother_occupation"
+                value={form.mother_occupation}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+
+            {/* Address & Sibling */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+              <textarea
+                name="address"
+                value={form.address}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                rows="2"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sibling Details</label>
+              <textarea
+                name="sibling_details"
+                value={form.sibling_details}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                rows="2"
+                placeholder="e.g., 2 brothers (ages 10, 15), 1 sister (age 8)"
+              />
+            </div>
+
+            {/* Photo */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="w-full border p-2 rounded focus:outline-none"
+              />
+              {previewUrl && (
+                <div className="mt-2">
+                  <img src={previewUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover border" />
+                </div>
+              )}
+            </div>
           </div>
+
           <div className="flex justify-end space-x-3 mt-6">
             <button
               type="button"
@@ -373,7 +621,7 @@ const Student = () => {
         </form>
       </Modal>
 
-      {/* Reusable Confirm Modal */}
+      {/* Confirm Modal */}
       <ConfirmModal
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}

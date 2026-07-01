@@ -9,6 +9,11 @@ import Teacher from './pages/Teacher';
 import StudentAttendance from './pages/StudentAttendance';
 import TeacherAttendance from './pages/TeacherAttendance';
 import RolePermissions from './pages/RolePermissions';
+import ClassSection from './pages/ClassSection';
+import ClassTeachers from './pages/ClassTeachers';
+import Subjects from './pages/Subjects';
+import TimetableManagement from './pages/TimetableManagement';
+import OnlineMeetLinks from './pages/OnlineMeetLinks';
 
 const App = () => (
   <AuthProvider>
@@ -57,6 +62,24 @@ const App = () => (
   element={
     <ProtectedRoute moduleCode="ROLE_PERMISSION">
       <RolePermissions />
+    </ProtectedRoute>
+  }
+/>
+<Route path="/subjects" element={<ProtectedRoute moduleCode="SUBJECTS"><Subjects /></ProtectedRoute>} />
+<Route path="/class-teachers" element={<ProtectedRoute moduleCode="CLASS_TEACHERS"><ClassTeachers /></ProtectedRoute>} />
+<Route path="/timetable" element={<ProtectedRoute moduleCode="TIMETABLE"><TimetableManagement /></ProtectedRoute>} />
+<Route path="/online-meet-links" element={
+  <ProtectedRoute moduleCode="ONLINE_MEET_LINKS">
+    <OnlineMeetLinks />
+  </ProtectedRoute>
+} />
+
+
+<Route
+  path="/class-section"
+  element={
+    <ProtectedRoute moduleCode="CLASS_SECTION">
+      <ClassSection />
     </ProtectedRoute>
   }
 />

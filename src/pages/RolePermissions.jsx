@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getRoles, getRolePermissions, updateRolePermissions } from '../services/rolePermissionService';
-import { usePermission } from '../hooks/usePermission';
+import { useModulePermissions } from '../hooks/useModulePermissions';
 import { Search, ChevronDown, Save, RefreshCw } from 'lucide-react';
 
 const RolePermissions = () => {
@@ -12,8 +12,7 @@ const RolePermissions = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { can } = usePermission();
-  const canUpdate = can('ROLE_PERMISSION', 'UPDATE');
+ const { canUpdate } = useModulePermissions();
 
   // Load roles on mount
   useEffect(() => {

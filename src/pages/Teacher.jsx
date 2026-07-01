@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getTeachers, getTeacherById, createTeacher, updateTeacher, deleteTeacher } from '../services/teacherService';
-import { usePermission } from '../hooks/usePermission';
+import { useModulePermissions } from '../hooks/useModulePermissions';
 import { Search, ChevronDown, Pencil, Trash2, Plus } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
@@ -21,18 +21,13 @@ const Teacher = () => {
     full_name: '',
     email: '',
     mobile: '',
-    department: '',
     qualification: '',
     joining_date: '',
-    subject: '',
     gender: '',
     date_of_birth: '',
   });
 
-  const { can } = usePermission();
-  const canCreate = can('TEACHER', 'CREATE');
-  const canUpdate = can('TEACHER', 'UPDATE');
-  const canDelete = can('TEACHER', 'DELETE');
+  const { canCreate, canUpdate, canDelete } = useModulePermissions();
 
   const fetchData = async () => {
     try {
@@ -65,10 +60,8 @@ const Teacher = () => {
       full_name: '',
       email: '',
       mobile: '',
-      department: '',
       qualification: '',
       joining_date: '',
-      subject: '',
       gender: '',
       date_of_birth: '',
     });
@@ -94,16 +87,14 @@ const Teacher = () => {
         full_name: data.full_name || '',
         email: data.email || '',
         mobile: data.mobile || '',
-        department: data.department || '',
         qualification: data.qualification || '',
         joining_date: data.joining_date || '',
-        subject: data.subject || '',
         gender: data.gender || '',
         date_of_birth: data.date_of_birth || '',
       });
-      // Set preview if profile picture exists
       if (data.profile_picture) {
-        setPreviewUrl(`http://localhost:5000/${data.profile_picture}`);
+        const baseURL = import.meta.env?.VITE_URL || 'http://localhost:5000';
+        setPreviewUrl(`${baseURL}${data.profile_picture}`);
       } else {
         setPreviewUrl('');
       }
@@ -200,79 +191,75 @@ const Teacher = () => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table – removed department and subject */}
       <div className="bg-white rounded shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-           <thead className="bg-gray-50 border-b">
-  <tr>
-    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">S.No.</th>
-    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Photo</th>
-    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Login ID</th>
-    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
-    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
-    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mobile</th>
-    {(canUpdate || canDelete) && (
-      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-    )}
-  </tr>
-</thead>
-         <tbody className="divide-y divide-gray-100">
-  {teachers.map((t, index) => (
-    <tr key={t.id} className="hover:bg-gray-50 transition">
-      <td className="px-4 py-3 text-sm">{index + 1}</td>
-      <td className="px-4 py-3">
-        {t.profile_picture ? (
-          <img
-            src={`${import.meta.env?.VITE_URL}${t.profile_picture}`}
-            alt={t.full_name}
-            className="w-10 h-10 rounded-full object-cover border"
-          />
-        ) : (
-          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs">
-            No
-          </div>
-        )}
-      </td>
-      <td className="px-4 py-3 text-sm font-medium">{t.full_name}</td>
-      <td className="px-4 py-3 text-sm">{t.login_id}</td>
-      <td className="px-4 py-3 text-sm">{t.department || '—'}</td>
-      <td className="px-4 py-3 text-sm">{t.subject || '—'}</td>
-      <td className="px-4 py-3 text-sm">{t.email || '—'}</td>
-      <td className="px-4 py-3 text-sm">{t.mobile || '—'}</td>
-      {(canUpdate || canDelete) && (
-        <td className="px-4 py-3 text-right space-x-2">
-          {canUpdate && (
-            <button
-              onClick={() => openEditModal(t)}
-              className="text-blue-600 hover:text-blue-800 p-1"
-            >
-              <Pencil size={16} />
-            </button>
-          )}
-          {canDelete && (
-            <button
-              onClick={() => openConfirmModal(t.id)}
-              className="text-red-500 hover:text-red-700 p-1"
-            >
-              <Trash2 size={16} />
-            </button>
-          )}
-        </td>
-      )}
-    </tr>
-  ))}
-  {teachers.length === 0 && (
-    <tr><td colSpan="10" className="text-center py-8 text-gray-500">No teachers found.</td></tr>
-  )}
-</tbody>
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">S.No.</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Photo</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Login ID</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qualification</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mobile</th>
+                {(canUpdate || canDelete) && (
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {teachers.map((t, index) => (
+                <tr key={t.id} className="hover:bg-gray-50 transition">
+                  <td className="px-4 py-3 text-sm">{index + 1}</td>
+                  <td className="px-4 py-3">
+                    {t.profile_picture ? (
+                      <img
+                        src={`${import.meta.env?.VITE_URL || 'http://localhost:5000'}${t.profile_picture}`}
+                        alt={t.full_name}
+                        className="w-10 h-10 rounded-full object-cover border"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs">No</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm font-medium">{t.full_name}</td>
+                  <td className="px-4 py-3 text-sm">{t.login_id}</td>
+                  <td className="px-4 py-3 text-sm">{t.qualification || '—'}</td>
+                  <td className="px-4 py-3 text-sm">{t.email || '—'}</td>
+                  <td className="px-4 py-3 text-sm">{t.mobile || '—'}</td>
+                  {(canUpdate || canDelete) && (
+                    <td className="px-4 py-3 text-right space-x-2">
+                      {canUpdate && (
+                        <button
+                          onClick={() => openEditModal(t)}
+                          className="text-blue-600 hover:text-blue-800 p-1"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          onClick={() => openConfirmModal(t.id)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {teachers.length === 0 && (
+                <tr><td colSpan="9" className="text-center py-8 text-gray-500">No teachers found.</td></tr>
+              )}
+            </tbody>
           </table>
         </div>
       </div>
 
-      {/* Reusable Modal for Create/Edit */}
+      {/* Modal – removed department and subject */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -337,31 +324,11 @@ const Teacher = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-              <input
-                type="text"
-                name="department"
-                value={form.department}
-                onChange={handleChange}
-                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Qualification</label>
               <input
                 type="text"
                 name="qualification"
                 value={form.qualification}
-                onChange={handleChange}
-                className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-              <input
-                type="text"
-                name="subject"
-                value={form.subject}
                 onChange={handleChange}
                 className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
@@ -400,7 +367,7 @@ const Teacher = () => {
                 className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
-            {/* Profile Photo – spans full width */}
+            {/* Profile Photo */}
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
               <input
@@ -434,7 +401,7 @@ const Teacher = () => {
         </form>
       </Modal>
 
-      {/* Reusable Confirm Modal */}
+      {/* Confirm Modal */}
       <ConfirmModal
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}

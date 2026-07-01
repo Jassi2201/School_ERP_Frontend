@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { getAttendance, getAttendanceById, createAttendance, updateAttendance, deleteAttendance } from '../services/studentAttendanceService';
-import { usePermission } from '../hooks/usePermission';
+import { getStudents } from '../services/studentService';
+import { useModulePermissions } from '../hooks/useModulePermissions';
 import { Search, ChevronDown, Pencil, Trash2, Plus } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
 
 const StudentAttendance = () => {
   const [records, setRecords] = useState([]);
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -17,21 +19,20 @@ const StudentAttendance = () => {
     student_id: '',
     attendance_date: '',
     status: 'Present',
-    class: '',
-    section: '',
     remarks: '',
   });
 
-  const { can } = usePermission();
-  const canCreate = can('STUDENT_ATTENDANCE', 'CREATE');
-  const canUpdate = can('STUDENT_ATTENDANCE', 'UPDATE');
-  const canDelete = can('STUDENT_ATTENDANCE', 'DELETE');
+  const { canCreate, canUpdate, canDelete } = useModulePermissions();
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await getAttendance();
-      setRecords(res.data.data);
+      const [attRes, studentsRes] = await Promise.all([
+        getAttendance(),
+        getStudents(),
+      ]);
+      setRecords(attRes.data.data);
+      setStudents(studentsRes.data.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load');
     } finally {
@@ -39,9 +40,7 @@ const StudentAttendance = () => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -51,8 +50,6 @@ const StudentAttendance = () => {
       student_id: '',
       attendance_date: '',
       status: 'Present',
-      class: '',
-      section: '',
       remarks: '',
     });
     setModalOpen(true);
@@ -68,8 +65,6 @@ const StudentAttendance = () => {
         student_id: data.student_id,
         attendance_date: data.attendance_date || '',
         status: data.status || 'Present',
-        class: data.class || '',
-        section: data.section || '',
         remarks: data.remarks || '',
       });
       setModalOpen(true);
@@ -111,7 +106,7 @@ const StudentAttendance = () => {
     setConfirmOpen(true);
   };
 
-  if (loading) return <div className="flex justify-center items-center h-64">Loading attendance...</div>;
+  if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
   if (error) return (
     <div className="bg-red-50 border p-4 rounded">
       {error} <button onClick={fetchData} className="ml-4 underline">Retry</button>
@@ -137,7 +132,7 @@ const StudentAttendance = () => {
                 onClick={openCreateModal}
                 className="h-10 px-5 text-white text-sm rounded bg-gradient-to-r from-[#d94d59] to-[#e47b4a] flex items-center gap-2"
               >
-                <Plus size={16} /> Add Attendance
+                <Plus size={16} /> Mark Attendance
               </button>
             )}
           </div>
@@ -149,12 +144,12 @@ const StudentAttendance = () => {
         <table className="w-full">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">S.No.</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Section</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remarks</th>
               {(canUpdate || canDelete) && (
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -162,10 +157,12 @@ const StudentAttendance = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {records.map((r) => (
+            {records.map((r, index) => (
               <tr key={r.id} className="hover:bg-gray-50 transition">
-                <td className="px-4 py-3 text-sm">{r.id}</td>
+                <td className="px-4 py-3 text-sm">{index + 1}</td>
                 <td className="px-4 py-3 text-sm font-medium">{r.student_name}</td>
+                <td className="px-4 py-3 text-sm">{r.class || '—'}</td>
+                <td className="px-4 py-3 text-sm">{r.section || '—'}</td>
                 <td className="px-4 py-3 text-sm">{new Date(r.attendance_date).toLocaleDateString()}</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-1 rounded text-xs font-medium
@@ -176,55 +173,52 @@ const StudentAttendance = () => {
                     {r.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm">{r.class || '—'}</td>
-                <td className="px-4 py-3 text-sm">{r.section || '—'}</td>
                 <td className="px-4 py-3 text-sm">{r.remarks || '—'}</td>
                 {(canUpdate || canDelete) && (
                   <td className="px-4 py-3 text-right space-x-2">
-                    {canUpdate && (
-                      <button onClick={() => openEditModal(r)} className="text-blue-600 hover:text-blue-800 p-1">
-                        <Pencil size={16} />
-                      </button>
-                    )}
-                    {canDelete && (
-                      <button onClick={() => openConfirmModal(r.id)} className="text-red-500 hover:text-red-700 p-1">
-                        <Trash2 size={16} />
-                      </button>
-                    )}
+                    {canUpdate && <button onClick={() => openEditModal(r)} className="text-blue-600 hover:text-blue-800 p-1"><Pencil size={16} /></button>}
+                    {canDelete && <button onClick={() => openConfirmModal(r.id)} className="text-red-500 hover:text-red-700 p-1"><Trash2 size={16} /></button>}
                   </td>
                 )}
               </tr>
             ))}
             {records.length === 0 && (
-              <tr><td colSpan="10" className="text-center py-8 text-gray-500">No attendance records found.</td></tr>
+              <tr><td colSpan="10" className="text-center py-8 text-gray-500">No records found.</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Reusable Modal for Create/Edit */}
+      {/* Modal */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editingId ? 'Edit Attendance' : 'Mark Attendance'}
+        maxWidth="max-w-md"
       >
         <form onSubmit={handleSubmit}>
           <div className="space-y-3">
             {!editingId && (
               <>
                 <div>
-                  <label className="block text-sm font-medium">Student ID *</label>
-                  <input
-                    type="number"
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Student *</label>
+                  <select
                     name="student_id"
                     value={form.student_id}
                     onChange={handleChange}
                     className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
                     required
-                  />
+                  >
+                    <option value="">Select Student</option>
+                    {students.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.full_name} ({s.class || 'No Class'} - {s.section || 'No Section'})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium">Date *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
                   <input
                     type="date"
                     name="attendance_date"
@@ -234,30 +228,10 @@ const StudentAttendance = () => {
                     required
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium">Class</label>
-                  <input
-                    type="text"
-                    name="class"
-                    value={form.class}
-                    onChange={handleChange}
-                    className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium">Section</label>
-                  <input
-                    type="text"
-                    name="section"
-                    value={form.section}
-                    onChange={handleChange}
-                    className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
               </>
             )}
             <div>
-              <label className="block text-sm font-medium">Status *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
               <select
                 name="status"
                 value={form.status}
@@ -271,7 +245,7 @@ const StudentAttendance = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium">Remarks</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
               <textarea
                 name="remarks"
                 value={form.remarks}
@@ -282,24 +256,15 @@ const StudentAttendance = () => {
             </div>
           </div>
           <div className="flex justify-end space-x-3 mt-6">
-            <button
-              type="button"
-              onClick={() => setModalOpen(false)}
-              className="px-4 py-2 border rounded hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 bg-gradient-to-r from-[#d94d59] to-[#e47b4a] text-white rounded hover:opacity-90"
-            >
+            <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancel</button>
+            <button type="submit" className="px-5 py-2 bg-gradient-to-r from-[#d94d59] to-[#e47b4a] text-white rounded hover:opacity-90">
               {editingId ? 'Update' : 'Create'}
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Reusable Confirm Modal */}
+      {/* Confirm Modal */}
       <ConfirmModal
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}

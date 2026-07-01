@@ -87,9 +87,9 @@ const Login = () => {
             </div>
           </form>
 
-          <p className="text-center text-xs text-gray-400 mt-6">
+          {/* <p className="text-center text-xs text-gray-400 mt-6">
             © {new Date().getFullYear()} School ERP. All rights reserved.
-          </p>
+          </p> */}
         </div>
       </div>
     </div>

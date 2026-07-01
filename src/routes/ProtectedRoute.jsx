@@ -1,20 +1,16 @@
 import { Navigate } from 'react-router-dom';
-import { usePermission } from '../hooks/usePermission';
 import { useAuth } from '../context/AuthContext';
+import { useModulePermissions } from '../hooks/useModulePermissions';
+import { ModuleProvider } from '../context/ModuleContext';
 
 const ProtectedRoute = ({ moduleCode, children }) => {
-  const { user } = useAuth();        // Check authentication first
-  const { can } = usePermission();
+  const { user } = useAuth();
+  const { canView } = useModulePermissions(moduleCode);
 
-  // If not logged in, go to login
   if (!user) return <Navigate to="/login" replace />;
+  if (moduleCode && !canView) return <Navigate to="/403" replace />;
 
-  // If logged in but lacks view permission, show 403
-  if (moduleCode && !can(moduleCode, 'VIEW')) {
-    return <Navigate to="/403" replace />;
-  }
-
-  return children;
+  return <ModuleProvider moduleCode={moduleCode}>{children}</ModuleProvider>;
 };
 
 export default ProtectedRoute;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAttendance, getAttendanceById, createAttendance, updateAttendance, deleteAttendance } from '../services/teacherAttendanceService';
-import { usePermission } from '../hooks/usePermission';
+import { useModulePermissions } from '../hooks/useModulePermissions';
 import { Search, ChevronDown, Pencil, Trash2, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
@@ -23,10 +23,7 @@ const TeacherAttendance = () => {
   });
 
   const { user } = useAuth();
-  const { can } = usePermission();
-  const canCreate = can('TEACHER_ATTENDANCE', 'CREATE');
-  const canUpdate = can('TEACHER_ATTENDANCE', 'UPDATE');
-  const canDelete = can('TEACHER_ATTENDANCE', 'DELETE');
+const { canCreate, canUpdate, canDelete } = useModulePermissions();
 
   const isTeacher = user?.role === 'Teacher';
 
