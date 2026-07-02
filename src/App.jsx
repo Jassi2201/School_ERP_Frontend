@@ -14,6 +14,9 @@ import ClassTeachers from './pages/ClassTeachers';
 import Subjects from './pages/Subjects';
 import TimetableManagement from './pages/TimetableManagement';
 import OnlineMeetLinks from './pages/OnlineMeetLinks';
+import TeacherHomework from './pages/HomeworkList';
+import HomeworkList from './pages/HomeworkList';
+import StudyMaterialList from './pages/StudyMaterialList';
 
 const App = () => (
   <AuthProvider>
@@ -73,7 +76,16 @@ const App = () => (
     <OnlineMeetLinks />
   </ProtectedRoute>
 } />
+<Route path="/homework" element={<ProtectedRoute moduleCode="HOMEWORK"><HomeworkList /></ProtectedRoute>} />
 
+<Route
+  path="/study-material"
+  element={
+    <ProtectedRoute moduleCode="STUDY_MATERIAL">
+      <StudyMaterialList />
+    </ProtectedRoute>
+  }
+/>
 
 <Route
   path="/class-section"

@@ -33,7 +33,9 @@ export const menuGroups = [
       { code: 'STUDENT', label: 'Students', icon: FaUser },
       { code: 'TEACHER', label: 'Teachers', icon: FaChalkboardTeacher },
       { code: 'SUBJECTS', label: 'Subjects', icon: FaBook },                     // ✅ New
-      { code: 'CLASS_TEACHERS', label: 'Class Teachers', icon: FaUserCheck },   // ✅ New
+      { code: 'CLASS_TEACHERS', label: 'Class Teachers', icon: FaUserCheck }, 
+      { code: 'HOMEWORK', label: 'Homework', icon: FaBook }, 
+      { code: 'STUDY_MATERIAL', label: 'Study Material', icon: FaBook },
     ],
   },
   {
